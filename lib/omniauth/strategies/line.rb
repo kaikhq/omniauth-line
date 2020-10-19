@@ -29,6 +29,13 @@ module OmniAuth
         }
       end
 
+      extra do
+        hash = {}
+        hash[:id_token] = access_token['id_token'] if access_token['id_token'].present?
+
+        hash
+      end
+
       # Require: Access token with PROFILE permission issued.
       def raw_info
         @raw_info ||= JSON.load(access_token.get('v2/profile').body)
