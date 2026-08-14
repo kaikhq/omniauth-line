@@ -2,10 +2,11 @@ require 'spec_helper'
 
 describe OmniAuth::Strategies::Line do
   let(:request) { double('Request', :params => {}, :cookies => {}, :env => {}) }
+  let(:app) { lambda { |_env| [200, {}, ['']] } }
 
   subject do
     args = ['channel_id', 'secret', @options || {}].compact
-    OmniAuth::Strategies::Line.new(*args).tap do |strategy|
+    OmniAuth::Strategies::Line.new(app, *args).tap do |strategy|
       allow(strategy).to receive(:request) {
         request
       }
@@ -28,65 +29,118 @@ describe OmniAuth::Strategies::Line do
     it 'should have correct token url' do
       expect(subject.options.client_options.token_url).to eq('/oauth2/v2.1/token')
     end
+
+    it 'should build the authorize url on access.line.me' do
+      expect(subject.client.authorize_url).to start_with('https://access.line.me/oauth2/v2.1/authorize')
+    end
+
+    it 'should build the token url on api.line.me' do
+      expect(subject.client.token_url).to eq('https://api.line.me/oauth2/v2.1/token')
+    end
   end
 
-  describe 'uid' do
+  describe 'callback_url' do
+    it 'should exclude the query string' do
+      allow(subject).to receive(:full_host).and_return('https://example.com')
+      allow(subject).to receive(:script_name).and_return('')
+      expect(subject.callback_url).to eq('https://example.com/auth/line/callback')
+    end
+  end
+
+  describe 'callback data' do
+    let(:id_token) { 'header.payload.signature' }
+    let(:access_token) do
+      OAuth2::AccessToken.new(subject.client, 'access-token', 'id_token' => id_token)
+    end
+
+    let(:profile_response) do
+      {
+        'userId'        => 'U4af4980629abc',
+        'displayName'   => 'Foo Bar',
+        'pictureUrl'    => 'https://profile.line-scdn.net/abc.jpg',
+        'statusMessage' => 'Developer'
+      }
+    end
+
+    let(:verify_response) do
+      {
+        'iss'   => 'https://access.line.me',
+        'sub'   => 'U4af4980629abc',
+        'email' => 'foo@example.com'
+      }
+    end
+
     before do
-      allow(subject).to receive(:raw_info).and_return(raw_info_hash)
+      allow(subject).to receive(:access_token).and_return(access_token)
+
+      stub_request(:get, 'https://api.line.me/v2/profile')
+        .with(:headers => { 'Authorization' => 'Bearer access-token' })
+        .to_return(:status => 200, :body => profile_response.to_json,
+                   :headers => { 'Content-Type' => 'application/json' })
+
+      stub_request(:post, 'https://api.line.me/oauth2/v2.1/verify')
+        .with(:body => { 'id_token' => id_token, 'client_id' => 'channel_id' })
+        .to_return(:status => 200, :body => verify_response.to_json,
+                   :headers => { 'Content-Type' => 'application/json' })
     end
 
-    it 'should returns the uid' do
-      expect(subject.uid).to eq('U4af4980629abc')
-    end
-  end
-
-  describe 'info' do
-    before do
-      allow(subject).to receive(:raw_info).and_return(raw_info_hash)
+    describe 'uid' do
+      it 'should return the userId from the profile' do
+        expect(subject.uid).to eq('U4af4980629abc')
+      end
     end
 
-    it 'should returns the name' do
-      expect(subject.info[:name]).to eq(raw_info_hash['displayName'])
-    end
-
-    it 'should returns the image' do
-      expect(subject.info[:image]).to eq(raw_info_hash['pictureUrl'])
-    end
-
-    it 'should returns the description' do
-      expect(subject.info[:description]).to eq(raw_info_hash['statusMessage'])
-    end
-
-    it 'should returns the email' do
-      expect(subject.info[:email]).to eq(raw_info_hash['email'])
-    end
-  end
-
-  describe 'request_phase' do
-    context 'with no request params set' do
-      before do
-        allow(subject).to receive(:request).and_return(
-          double('Request', {:params => {}})
-        )
-        allow(subject).to receive(:request_phase).and_return(:whatever)
+    describe 'info' do
+      it 'should return the name' do
+        expect(subject.info[:name]).to eq('Foo Bar')
       end
 
-      it 'should not break' do
-        expect { subject.request_phase }.not_to raise_error
+      it 'should return the image' do
+        expect(subject.info[:image]).to eq('https://profile.line-scdn.net/abc.jpg')
+      end
+
+      it 'should return the description' do
+        expect(subject.info[:description]).to eq('Developer')
+      end
+
+      it 'should return the email decoded from the id token' do
+        expect(subject.info[:email]).to eq('foo@example.com')
+      end
+    end
+
+    describe 'extra' do
+      it 'should contain the id token' do
+        expect(subject.extra[:id_token]).to eq(id_token)
+      end
+    end
+
+    describe 'raw_info' do
+      it 'should memoize the profile request' do
+        2.times { subject.raw_info }
+        expect(a_request(:get, 'https://api.line.me/v2/profile')).to have_been_made.once
+      end
+
+      it 'should convert connection timeouts into Timeout::Error' do
+        stub_request(:post, 'https://api.line.me/oauth2/v2.1/verify').to_raise(Errno::ETIMEDOUT)
+        expect { subject.raw_info }.to raise_error(Timeout::Error)
+      end
+    end
+
+    context 'when no id token was issued' do
+      let(:access_token) { OAuth2::AccessToken.new(subject.client, 'access-token') }
+
+      it 'should return no email' do
+        expect(subject.info[:email]).to be_nil
+      end
+
+      it 'should not call the verify endpoint' do
+        subject.info
+        expect(a_request(:post, 'https://api.line.me/oauth2/v2.1/verify')).not_to have_been_made
+      end
+
+      it 'should omit the id token from extra' do
+        expect(subject.extra).to eq({})
       end
     end
   end
-
-end
-
-private
-
-def raw_info_hash
-  {
-    'userId'        => 'U4af4980629abc',
-    'displayName'   => 'Foo Bar',
-    'pictureUrl'    => 'http://xxx.com/aaa.jpg',
-    'statusMessage' => 'Developer',
-    'email'         => 'foo@example.com'
-  }
 end
