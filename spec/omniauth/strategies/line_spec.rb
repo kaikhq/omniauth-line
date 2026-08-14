@@ -18,11 +18,11 @@ describe OmniAuth::Strategies::Line do
     end
 
     it 'should have correct site' do
-      expect(subject.options.client_options.site).to eq('https://access.line.me')
+      expect(subject.options.client_options.site).to eq('https://api.line.me')
     end
 
     it 'should have correct authorize url' do
-      expect(subject.options.client_options.authorize_url).to eq('/oauth2/v2.1/authorize')
+      expect(subject.options.client_options.authorize_url).to eq('https://access.line.me/oauth2/v2.1/authorize')
     end
 
     it 'should have correct token url' do
@@ -36,7 +36,7 @@ describe OmniAuth::Strategies::Line do
     end
 
     it 'should returns the uid' do
-      expect(subject.uid).to eq(raw_info_hash['mid'])
+      expect(subject.uid).to eq('U4af4980629abc')
     end
   end
 
@@ -55,6 +55,10 @@ describe OmniAuth::Strategies::Line do
 
     it 'should returns the description' do
       expect(subject.info[:description]).to eq(raw_info_hash['statusMessage'])
+    end
+
+    it 'should returns the email' do
+      expect(subject.info[:email]).to eq(raw_info_hash['email'])
     end
   end
 
@@ -79,9 +83,10 @@ private
 
 def raw_info_hash
   {
-    'uid'           => 'hoge',
+    'userId'        => 'U4af4980629abc',
     'displayName'   => 'Foo Bar',
     'pictureUrl'    => 'http://xxx.com/aaa.jpg',
-    'statusMessage' => 'Developer'
+    'statusMessage' => 'Developer',
+    'email'         => 'foo@example.com'
   }
 end
