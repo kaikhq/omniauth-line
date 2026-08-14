@@ -50,7 +50,8 @@ describe OmniAuth::Strategies::Line do
   describe 'callback data' do
     let(:id_token) { 'header.payload.signature' }
     let(:access_token) do
-      OAuth2::AccessToken.new(subject.client, 'access-token', 'id_token' => id_token)
+      OAuth2::AccessToken.new(subject.client, 'access-token',
+                              'id_token' => id_token, 'scope' => 'profile openid email')
     end
 
     let(:profile_response) do
@@ -127,7 +128,9 @@ describe OmniAuth::Strategies::Line do
     end
 
     context 'when no id token was issued' do
-      let(:access_token) { OAuth2::AccessToken.new(subject.client, 'access-token') }
+      let(:access_token) do
+        OAuth2::AccessToken.new(subject.client, 'access-token', 'scope' => 'profile')
+      end
 
       it 'should return no email' do
         expect(subject.info[:email]).to be_nil
@@ -140,6 +143,32 @@ describe OmniAuth::Strategies::Line do
 
       it 'should omit the id token from extra' do
         expect(subject.extra).to eq({})
+      end
+    end
+
+    context 'when the email scope was not granted' do
+      let(:access_token) do
+        OAuth2::AccessToken.new(subject.client, 'access-token',
+                                'id_token' => id_token, 'scope' => 'profile openid')
+      end
+
+      it 'should return no email' do
+        expect(subject.info[:email]).to be_nil
+      end
+
+      it 'should not call the verify endpoint' do
+        subject.info
+        expect(a_request(:post, 'https://api.line.me/oauth2/v2.1/verify')).not_to have_been_made
+      end
+    end
+
+    context 'when the token response carries no scope field' do
+      let(:access_token) do
+        OAuth2::AccessToken.new(subject.client, 'access-token', 'id_token' => id_token)
+      end
+
+      it 'should still fetch the email' do
+        expect(subject.info[:email]).to eq('foo@example.com')
       end
     end
   end

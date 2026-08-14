@@ -38,7 +38,11 @@ module OmniAuth
       # never from the profile endpoint; the verify endpoint decodes it.
       def email
         id_token = access_token['id_token']
+        scope = access_token['scope']
         return nil unless id_token
+        # Skip the verify call when the granted scope is known to lack email;
+        # a response without a scope field falls through and still tries.
+        return nil if scope && !scope.split.include?('email')
 
         params = {
           id_token: id_token,
