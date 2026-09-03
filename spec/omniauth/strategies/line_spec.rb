@@ -37,6 +37,17 @@ describe OmniAuth::Strategies::Line do
     it 'should build the token url on api.line.me' do
       expect(subject.client.token_url).to eq('https://api.line.me/oauth2/v2.1/token')
     end
+
+    it 'should send client credentials in the token request body' do
+      stub_request(:post, 'https://api.line.me/oauth2/v2.1/token')
+        .to_return(:status => 200, :body => { 'access_token' => 't' }.to_json,
+                   :headers => { 'Content-Type' => 'application/json' })
+      subject.client.auth_code.get_token('a-code', redirect_uri: 'https://example.com/cb')
+      expect(
+        a_request(:post, 'https://api.line.me/oauth2/v2.1/token')
+          .with(:body => hash_including('client_id' => 'channel_id', 'client_secret' => 'secret'))
+      ).to have_been_made
+    end
   end
 
   describe 'authorize params' do
@@ -143,9 +154,39 @@ describe OmniAuth::Strategies::Line do
         expect(a_request(:get, 'https://api.line.me/v2/profile')).to have_been_made.once
       end
 
-      it 'should convert connection timeouts into Timeout::Error' do
-        stub_request(:post, 'https://api.line.me/oauth2/v2.1/verify').to_raise(Errno::ETIMEDOUT)
+      it 'should convert profile connection timeouts into Timeout::Error' do
+        stub_request(:get, 'https://api.line.me/v2/profile').to_raise(Errno::ETIMEDOUT)
         expect { subject.raw_info }.to raise_error(Timeout::Error)
+      end
+    end
+
+    describe 'email degradation' do
+      it 'should return no email when the verify call times out' do
+        stub_request(:post, 'https://api.line.me/oauth2/v2.1/verify').to_timeout
+        expect(subject.info[:email]).to be_nil
+      end
+
+      it 'should return no email when the verify call is rejected' do
+        stub_request(:post, 'https://api.line.me/oauth2/v2.1/verify')
+          .to_return(:status => 400,
+                     :body => { 'error' => 'invalid_request', 'error_description' => 'Invalid IdToken.' }.to_json,
+                     :headers => { 'Content-Type' => 'application/json' })
+        expect(subject.info[:email]).to be_nil
+      end
+
+      it 'should return no email when the verify response is not JSON' do
+        stub_request(:post, 'https://api.line.me/oauth2/v2.1/verify')
+          .to_return(:status => 502, :body => '<html>Bad Gateway</html>')
+        expect(subject.info[:email]).to be_nil
+      end
+
+      it 'should log a warning on verify failure' do
+        stub_request(:post, 'https://api.line.me/oauth2/v2.1/verify')
+          .to_return(:status => 400,
+                     :body => { 'error' => 'invalid_request', 'error_description' => 'Invalid IdToken.' }.to_json,
+                     :headers => { 'Content-Type' => 'application/json' })
+        expect(subject).to receive(:log).with(:warn, /Invalid IdToken/)
+        subject.info
       end
     end
 
