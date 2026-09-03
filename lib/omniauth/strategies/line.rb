@@ -8,6 +8,14 @@ module OmniAuth
       option :name, 'line'
       option :scope, 'profile openid'
 
+      # omniauth-oauth2 only forwards options named here to the authorize
+      # URL; anything else set on the strategy is silently dropped.
+      option :authorize_options, %i[
+        scope state prompt nonce max_age ui_locales bot_prompt
+        initial_amr_display switch_amr disable_auto_login
+        disable_ios_auto_login
+      ]
+
       # Authorization lives on access.line.me while every API call
       # (token exchange, profile, verify) lives on api.line.me.
       option :client_options, {
