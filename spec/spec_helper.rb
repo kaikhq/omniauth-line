@@ -15,8 +15,10 @@ VCR.configure do |config|
   config.cassette_library_dir = File.expand_path('cassettes', __dir__)
   config.hook_into :webmock
   # :once records against the real LINE API when a cassette is missing and
-  # replays it forever after; CI only ever replays committed cassettes.
-  config.default_cassette_options = { record: :once }
+  # replays it forever after; on CI a missing cassette is a hard failure
+  # instead of a network call.
+  config.default_cassette_options = { record: ENV['CI'] ? :none : :once }
+  config.filter_sensitive_data('<CHANNEL_SECRET>') { 'secret' }
 end
 
 RSpec.configure do |config|
