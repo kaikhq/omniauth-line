@@ -6,7 +6,9 @@ the source of truth when building setup-verification UI around this gem:
 each state maps to a concrete, actionable message for the person configuring
 the channel.
 
-Response bodies are quoted verbatim; access tokens are truncated.
+Response bodies are quoted verbatim, except that access tokens are truncated
+and channel IDs are elided as `"..."` — the `error`/`error_description`/
+`scope`/`message` values are the exact strings LINE returns.
 
 ## Reading a channel's permissions without any user login
 
