@@ -180,6 +180,11 @@ describe OmniAuth::Strategies::Line do
         expect(subject.info[:email]).to be_nil
       end
 
+      it 'should fall back to default timeouts when verify_options is overridden away' do
+        @options = { verify_options: nil }
+        expect(subject.info[:email]).to eq('foo@example.com')
+      end
+
       it 'should log a warning on verify failure' do
         stub_request(:post, 'https://api.line.me/oauth2/v2.1/verify')
           .to_return(:status => 400,

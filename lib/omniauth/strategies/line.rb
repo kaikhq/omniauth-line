@@ -18,7 +18,8 @@ module OmniAuth
 
       # The verify call runs inside the user-facing callback request, so a
       # slow LINE API must fail fast rather than hold the login hostage.
-      option :verify_options, { open_timeout: 5, read_timeout: 10 }
+      DEFAULT_VERIFY_TIMEOUTS = { open_timeout: 5, read_timeout: 10 }.freeze
+      option :verify_options, DEFAULT_VERIFY_TIMEOUTS.dup
 
       # Authorization lives on access.line.me while every API call
       # (token exchange, profile, verify) lives on api.line.me.
@@ -101,10 +102,11 @@ module OmniAuth
         uri = URI('https://api.line.me/oauth2/v2.1/verify')
         request = Net::HTTP::Post.new(uri)
         request.set_form_data(id_token: id_token, client_id: client.id)
+        timeouts = options.verify_options || {}
         Net::HTTP.start(uri.host, uri.port,
                         use_ssl: true,
-                        open_timeout: options.verify_options[:open_timeout],
-                        read_timeout: options.verify_options[:read_timeout]) do |http|
+                        open_timeout: timeouts[:open_timeout] || DEFAULT_VERIFY_TIMEOUTS[:open_timeout],
+                        read_timeout: timeouts[:read_timeout] || DEFAULT_VERIFY_TIMEOUTS[:read_timeout]) do |http|
           http.request(request)
         end
       end
