@@ -235,4 +235,38 @@ describe OmniAuth::Strategies::Line do
       end
     end
   end
+
+  # Cassettes under spec/cassettes were recorded against the real LINE API
+  # with throwaway credentials (no secrets involved); CI only replays them.
+  describe 'recorded LINE API behavior' do
+    let(:access_token) do
+      OAuth2::AccessToken.new(subject.client, 'invalid-access-token',
+                              'id_token' => 'bogus.id.token', 'scope' => 'profile openid email')
+    end
+
+    before do
+      allow(subject).to receive(:access_token).and_return(access_token)
+    end
+
+    it 'should degrade to a nil email when LINE rejects the id token' do
+      VCR.use_cassette('verify_invalid_id_token') do
+        expect(subject.email).to be_nil
+      end
+    end
+
+    it 'should raise OAuth2::Error when LINE rejects the profile access token' do
+      VCR.use_cassette('profile_invalid_access_token') do
+        expect { subject.raw_info }.to raise_error(OAuth2::Error)
+      end
+    end
+
+    it 'should raise OAuth2::Error when the token exchange is rejected' do
+      VCR.use_cassette('token_invalid_client') do
+        expect {
+          subject.client.auth_code.get_token('bogus-code',
+                                             redirect_uri: 'https://example.com/auth/line/callback')
+        }.to raise_error(OAuth2::Error)
+      end
+    end
+  end
 end
