@@ -1,0 +1,54 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.line.me/oauth2/v2.1/verify
+    body:
+      encoding: US-ASCII
+      string: id_token=bogus.id.token&client_id=channel_id
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - api.line.me
+      Content-Type:
+      - application/x-www-form-urlencoded
+  response:
+    status:
+      code: 400
+      message: Bad Request
+    headers:
+      Content-Type:
+      - application/json;charset=UTF-8
+      Server:
+      - Moon/0.129.0
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - DENY
+      X-Line-Request-Id:
+      - 8f3f565f12943167
+      X-Xss-Protection:
+      - '0'
+      Content-Length:
+      - '85'
+      Expires:
+      - Thu, 03 Sep 2026 02:49:01 GMT
+      Cache-Control:
+      - max-age=0, no-cache, no-store
+      Pragma:
+      - no-cache
+      Date:
+      - Thu, 03 Sep 2026 02:49:01 GMT
+      Connection:
+      - close
+    body:
+      encoding: UTF-8
+      string: '{"error":"invalid_request","error_description":"some parameters in
+        the wrong format"}'
+  recorded_at: Thu, 03 Sep 2026 02:49:01 GMT
+recorded_with: VCR 6.4.0
