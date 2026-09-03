@@ -7,8 +7,17 @@ end
 require 'rspec'
 require 'rack/test'
 require 'webmock/rspec'
+require 'vcr'
 require 'omniauth'
 require 'omniauth-line'
+
+VCR.configure do |config|
+  config.cassette_library_dir = File.expand_path('cassettes', __dir__)
+  config.hook_into :webmock
+  # :once records against the real LINE API when a cassette is missing and
+  # replays it forever after; CI only ever replays committed cassettes.
+  config.default_cassette_options = { record: :once }
+end
 
 RSpec.configure do |config|
   config.include WebMock::API
