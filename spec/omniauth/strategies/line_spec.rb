@@ -62,6 +62,11 @@ describe OmniAuth::Strategies::Line do
       allow(subject).to receive(:script_name).and_return('')
       expect(subject.callback_url).to eq('https://example.com/auth/line/callback')
     end
+
+    it 'should prefer an explicitly configured redirect_uri' do
+      @options = { redirect_uri: 'https://school.example.com/api/auth/line/callback' }
+      expect(subject.callback_url).to eq('https://school.example.com/api/auth/line/callback')
+    end
   end
 
   describe 'callback data' do
