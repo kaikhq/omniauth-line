@@ -39,6 +39,23 @@ describe OmniAuth::Strategies::Line do
     end
   end
 
+  describe 'authorize params' do
+    it 'should forward LINE-specific options to the authorize request' do
+      @options = { prompt: 'consent', bot_prompt: 'normal', ui_locales: 'zh-TW' }
+      allow(subject).to receive(:session).and_return({})
+      params = subject.authorize_params
+      expect(params[:prompt]).to eq('consent')
+      expect(params[:bot_prompt]).to eq('normal')
+      expect(params[:ui_locales]).to eq('zh-TW')
+    end
+
+    it 'should not forward options outside the whitelist' do
+      @options = { channel_secret: 'super-secret' }
+      allow(subject).to receive(:session).and_return({})
+      expect(subject.authorize_params).not_to have_key(:channel_secret)
+    end
+  end
+
   describe 'callback_url' do
     it 'should exclude the query string' do
       allow(subject).to receive(:full_host).and_return('https://example.com')
