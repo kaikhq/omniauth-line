@@ -19,6 +19,9 @@ VCR.configure do |config|
   # instead of a network call.
   config.default_cassette_options = { record: ENV['CI'] ? :none : :once }
   config.filter_sensitive_data('<CHANNEL_SECRET>') { 'secret' }
+  # Anyone re-recording against a real channel exports LINE_CHANNEL_SECRET;
+  # scrub it so real credentials can never land in committed YAML.
+  config.filter_sensitive_data('<CHANNEL_SECRET>') { ENV['LINE_CHANNEL_SECRET'] } if ENV['LINE_CHANNEL_SECRET']
 end
 
 RSpec.configure do |config|
