@@ -233,7 +233,7 @@ describe OmniAuth::Strategies::Line do
   describe 'recorded LINE API behavior' do
     let(:access_token) do
       OAuth2::AccessToken.new(subject.client, 'invalid-access-token',
-                              'id_token' => 'bogus.id.token', 'scope' => 'profile openid email')
+                              'id_token' => 'bogus.id.token', 'scope' => 'profile openid')
     end
 
     before do
