@@ -1,7 +1,7 @@
 # LINE channel diagnostics: real API responses and what to tell the user
 
 Every response below was recorded live against `api.line.me` on 2026-09-03
-with production LINE Login channels in known permission states. Use this as
+with LINE Login channels in known permission states. Use this as
 the source of truth when building setup-verification UI around this gem:
 each state maps to a concrete, actionable message for the person configuring
 the channel.
@@ -22,7 +22,7 @@ POST https://api.line.me/v2/oauth/revoke          # clean up (idempotent)
 ```
 
 The `scope` field of the verify response carries undocumented
-channel-permission codes, mapped empirically across 30+ production channels:
+channel-permission codes, mapped empirically across many channels:
 
 | Code | Meaning | Consequence when absent |
 |---|---|---|
@@ -109,7 +109,6 @@ raw interpolation 400s on tokens containing `+` or `/`.
 - **Provider membership** — user IDs are scoped per provider, and nothing in
   any token or response identifies the provider. If the owner recreates the
   channel under a different provider, every existing member's LINE user ID
-  changes and account links silently break. (Channel rotation is real: one
-  production school swapped channels within a single day of observation.)
+  changes and account links silently break.
 - **Redirect URI mismatch as a machine-readable error** — it never reaches
   the token endpoint.
